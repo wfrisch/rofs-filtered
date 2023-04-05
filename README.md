@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/gburca/rofs-filtered.svg?branch=master)](https://travis-ci.org/gburca/rofs-filtered)
-[![Coverity](https://scan.coverity.com/projects/11175/badge.svg)](https://scan.coverity.com/projects/gburca-rofs-filtered)
+Forked from [gburca/rofs-filtered](https://github.com/gburca/rofs-filtered) with changes:
+* upgrade to FUSE v3
 
 This FUSE file system allows the user to mount a directory tree as read-only
 and filter the files shown in the read-only directory tree based on regular
@@ -25,10 +25,10 @@ Get the latest version from:
 
 
 ### Dependencies:
-* libfuse2
-* libfuse-dev
+* libfuse3
+* libfuse3-dev
 * fuse
-  * Version 2.5 or later of FUSE is required.
+  * Version 3.1 or later of FUSE is required.
 
 
 ### Building:
