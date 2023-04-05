@@ -10,11 +10,11 @@ set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallIf.cmake)
 
 add_definitions(-D_GNU_SOURCE)
-set(CMAKE_C_FLAGS "-Wall -std=c99")
+set(CMAKE_C_FLAGS "-Wall -std=c11")
 
 # find fuse library
-find_package (FUSE REQUIRED)
-include_directories (${FUSE_INCLUDE_DIR})
+find_package (fuse3 REQUIRED)
+include_directories (${FUSE3_INCLUDE_DIR})
 add_definitions(-D_FILE_OFFSET_BITS=64)
 
 # generate config file
@@ -25,7 +25,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # create and configure targets
 add_executable(rofs-filtered rofs-filtered.c)
-target_link_libraries(rofs-filtered ${FUSE_LIBRARIES})
+target_link_libraries(rofs-filtered ${FUSE3_LIBRARY})
 
 # configure installation
 install(TARGETS rofs-filtered DESTINATION ${CMAKE_INSTALL_BINDIR})

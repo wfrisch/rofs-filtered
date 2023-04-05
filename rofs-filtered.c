@@ -67,11 +67,7 @@
 #define lsetxattr(path, name, value, size, flags) (setxattr(path, name, value, size, 0, flags | XATTR_NOFOLLOW))
 #endif
 
-// We depend on version 2.5 of FUSE because it provides an "access" callback.
-// Some applications would call "access" and figure out a file is writable
-// (which was the default behavior of "access" prior to 2.5), then attempt to
-// open the file "rw", fail, and bomb out because of the conflicting info.
-#define FUSE_USE_VERSION 25
+#define FUSE_USE_VERSION 31
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -87,7 +83,7 @@
 #include <sys/xattr.h>
 #include <regex.h>
 #include <syslog.h>
-#include <fuse.h>
+#include <fuse3/fuse.h>
 
 // AC_HEADER_STDC
 #include <stdlib.h>
@@ -421,7 +417,8 @@ static int should_hide(const char *name, mode_t mode) {
  *
  ******************************/
 
-static int callback_getattr(const char *path, struct stat *st_data) {
+static int callback_getattr(const char *path, struct stat *st_data, struct fuse_file_info *finfo) {
+    (void)finfo;
     char *trpath=translate_path(path);
     if (!trpath) {
         errno = ENOMEM;
@@ -462,7 +459,7 @@ static int callback_readlink(const char *path, char *buf, size_t size) {
 }
 
 static int callback_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-                            off_t offset, struct fuse_file_info *fi)
+                            off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags)
 {
     if (should_hide(path, S_IFREG)) return -ENOENT;
 
@@ -526,7 +523,7 @@ static int callback_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
             memset(&st, 0, sizeof(st));
             st.st_ino = de->d_ino;
             st.st_mode = de->d_type << 12;
-            if (filler(buf, de->d_name, &st, 0))
+            if (filler(buf, de->d_name, &st, 0, 0))
                 break;
         }
 
@@ -566,11 +563,12 @@ static int callback_symlink(const char *from, const char *to)
     return -EPERM;
 }
 
-static int callback_rename(const char *from, const char *to) {
+static int callback_rename(const char *from, const char *to, unsigned int flags) {
     if (should_hide(from, S_IFREG)) return -ENOENT;
 
     (void)from;
     (void)to;
+    (void)flags;
     return -EPERM;
 }
 
@@ -582,35 +580,39 @@ static int callback_link(const char *from, const char *to) {
     return -EPERM;
 }
 
-static int callback_chmod(const char *path, mode_t mode) {
+static int callback_chmod(const char *path, mode_t mode, struct fuse_file_info *finfo) {
     if (should_hide(path, S_IFREG)) return -ENOENT;
 
     (void)path;
     (void)mode;
+    (void)finfo;
     return -EPERM;
 }
 
-static int callback_chown(const char *path, uid_t uid, gid_t gid) {
+static int callback_chown(const char *path, uid_t uid, gid_t gid, struct fuse_file_info *finfo) {
     if (should_hide(path, S_IFREG)) return -ENOENT;
 
     (void)path;
     (void)uid;
     (void)gid;
+    (void)finfo;
     return -EPERM;
 }
 
-static int callback_truncate(const char *path, off_t size) {
+static int callback_truncate(const char *path, off_t size, struct fuse_file_info *finfo) {
     if (should_hide(path, S_IFREG)) return -ENOENT;
 
     (void)path;
     (void)size;
+    (void)finfo;
     return -EPERM;
 }
 
-static int callback_utime(const char *path, struct utimbuf *buf)
+static int callback_utimens(const char *path, const struct timespec tv[2], struct fuse_file_info *finfo)
 {
     (void)path;
-    (void)buf;
+    (void)tv;
+    (void)finfo;
     return -EPERM;
 }
 
@@ -895,7 +897,7 @@ struct fuse_operations callback_oper = {
     .chmod      = callback_chmod,
     .chown      = callback_chown,
     .truncate   = callback_truncate,
-    .utime      = callback_utime,
+    .utimens    = callback_utimens,
     .open       = callback_open,
     .read       = callback_read,
     .write      = callback_write,
@@ -948,14 +950,14 @@ static int rofs_opt_proc(void *data, const char *arg, int key, struct fuse_args 
                 , outargs->argv[0], default_config_file);
         // Let fuse print out its help text as well...
         fuse_opt_add_arg(outargs, "-ho");
-        fuse_main(outargs->argc, outargs->argv, &callback_oper);
+        fuse_main(outargs->argc, outargs->argv, &callback_oper, NULL);
         exit(1);
 
     case KEY_VERSION:
         fprintf(stderr, "%s version: %s\n", EXEC_NAME, PACKAGE_VERSION);
         // Let fuse also print its version
         fuse_opt_add_arg(outargs, "--version");
-        fuse_main(outargs->argc, outargs->argv, &callback_oper);
+        fuse_main(outargs->argc, outargs->argv, &callback_oper, NULL);
         exit(0);
 
     case KEY_DEBUG:
@@ -994,5 +996,5 @@ int main(int argc, char *argv[]) {
         exit(3);
     }
 
-    return fuse_main(args.argc, args.argv, &callback_oper);
+    return fuse_main(args.argc, args.argv, &callback_oper, NULL);
 }
