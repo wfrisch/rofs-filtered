@@ -1,6 +1,8 @@
 Forked from [gburca/rofs-filtered](https://github.com/gburca/rofs-filtered) with changes:
 * upgrade to FUSE v3
 
+------------------------------------------------------------------------
+
 This FUSE file system allows the user to mount a directory tree as read-only
 and filter the files shown in the read-only directory tree based on regular
 expressions found in the rofs-filtered.rc configuration file. See the
